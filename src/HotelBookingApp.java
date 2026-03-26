@@ -1,6 +1,22 @@
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Scanner;
 
+class RoomInventory {
+    private Map<String, Integer> roomAvailability;
+
+    public RoomInventory() {
+        roomAvailability = new HashMap<>();
+        roomAvailability.put("Single", 5);
+        roomAvailability.put("Double", 3);
+        roomAvailability.put("Suite", 2);
+    }
+    public Map<String, Integer> getRoomAvailability() {
+        return roomAvailability;
+    }
+}
 class Reservation {
     private String guestName;
     private String roomType;
@@ -9,52 +25,67 @@ class Reservation {
         this.guestName = guestName;
         this.roomType = roomType;
     }
-
     public String getGuestName() { return guestName; }
     public String getRoomType() { return roomType; }
 }
 
-class BookingHistory {
-    private List<Reservation> confirmedReservations;
-
-    public BookingHistory() {
-        confirmedReservations = new ArrayList<>();
+class BookingRequestQueue {
+    private Queue<Reservation> requestQueue;
+    public BookingRequestQueue() {
+        requestQueue = new LinkedList<>();
     }
-    public void addReservation(Reservation reservation) {
-        confirmedReservations.add(reservation);
-    }
-    public List<Reservation> getConfirmedReservations() {
-        return confirmedReservations;
+    public void addRequest(Reservation reservation) {
+        requestQueue.offer(reservation);
     }
 }
-class BookingReportService {
-    public void generateReport(BookingHistory history) {
-        System.out.println("\nBooking History Report");
-        List<Reservation> reservations = history.getConfirmedReservations();
 
-        if (reservations.isEmpty()) {
-            System.out.println("No booking history available.");
-            return;
+class InvalidBookingException extends Exception {
+    public InvalidBookingException(String message) {
+        super(message);
+    }
+}
+
+class ReservationValidator {
+    public void validate(String guestName, String roomType, RoomInventory inventory) throws InvalidBookingException {
+        if (guestName == null || guestName.trim().isEmpty()) {
+            throw new InvalidBookingException("Guest name cannot be empty.");
         }
-
-        for (Reservation reservation : reservations) {
-            System.out.println("Guest: " + reservation.getGuestName() +
-                    ", Room Type: " + reservation.getRoomType());
+        Map<String, Integer> availability = inventory.getRoomAvailability();
+        if (!availability.containsKey(roomType)) {
+            throw new InvalidBookingException("Invalid room type selected.");
+        }
+        if (availability.get(roomType) <= 0) {
+            throw new InvalidBookingException("Selected room type is currently fully booked.");
         }
     }
 }
 
 public class HotelBookingApp {
     public static void main(String[] args) {
-        System.out.println("Booking History and Reporting");
+        System.out.println("Booking Validation");
 
-        BookingHistory history = new BookingHistory();
-        BookingReportService reportService = new BookingReportService();
+        Scanner scanner = new Scanner(System.in);
 
-        history.addReservation(new Reservation("Abhi", "Single"));
-        history.addReservation(new Reservation("Subha", "Double"));
-        history.addReservation(new Reservation("Vanmathi", "Suite"));
+        RoomInventory inventory = new RoomInventory();
+        ReservationValidator validator = new ReservationValidator();
+        BookingRequestQueue bookingQueue = new BookingRequestQueue();
 
-        reportService.generateReport(history);
+        try {
+            System.out.print("Enter guest name: ");
+            String guestName = scanner.nextLine();
+            System.out.print("Enter room type (Single/Double/Suite): ");
+            String roomType = scanner.nextLine();
+            validator.validate(guestName, roomType, inventory);
+            Reservation newReservation = new Reservation(guestName, roomType);
+            bookingQueue.addRequest(newReservation);
+            System.out.println("Booking successfully added to the queue!");
+
+        } catch (InvalidBookingException e) {
+            System.out.println("Booking failed: " + e.getMessage());
+        } catch (Exception e) {
+            System.out.println("An unexpected error occurred: " + e.getMessage());
+        } finally {
+            scanner.close();
+        }
     }
 }
